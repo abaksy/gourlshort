@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 
@@ -8,29 +9,44 @@ import (
 )
 
 func main() {
+	inputFile := flag.String("file", "test/test.yml", "Input filename to read data from")
+	inputFormat := flag.String("format", "yaml", "Input format (currently supported: json,yaml)")
+	flag.Parse()
+
+	if *inputFormat != "yaml" && *inputFormat != "json" {
+		panic("Supplied format must be 'json' or 'yaml'!")
+	}
+
 	mux := defaultMux()
 
 	// Build the MapHandler using the mux as the fallback
-	pathsToUrls := map[string]string{
-		"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",
-		"/yaml-godoc":     "https://godoc.org/gopkg.in/yaml.v2",
-	}
-	mapHandler := urlshort.MapHandler(pathsToUrls, mux)
+	mapHandler := urlshort.MapHandler(urlshort.DefaultURLMap, mux)
 
 	// Build the YAMLHandler using the mapHandler as the
 	// fallback
-	yaml := `
-- path: /urlshort
-  url: https://github.com/gophercises/urlshort
-- path: /urlshort-final
-  url: https://github.com/gophercises/urlshort/tree/solution
-`
-	yamlHandler, err := urlshort.YAMLHandler([]byte(yaml), mapHandler)
+	data, err := urlshort.ReadDataFile(*inputFile)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Starting the server on :8080")
-	http.ListenAndServe(":8080", yamlHandler)
+
+	handler := mapHandler
+	switch *inputFormat {
+	case "yaml":
+		fmt.Println("Using YAML Handler")
+		handler, err = urlshort.YAMLHandler(data, mapHandler)
+		if err != nil {
+			panic(err)
+		}
+	case "json":
+		fmt.Println("Using JSON Handler")
+		handler, err = urlshort.JSONHandler(data, mapHandler)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	fmt.Printf("Starting the server on %v\n", urlshort.Port)
+	http.ListenAndServe(urlshort.Port, handler)
 }
 
 func defaultMux() *http.ServeMux {
