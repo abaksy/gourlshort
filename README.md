@@ -4,7 +4,7 @@ My solution to Jon Calhoun's Gophercises [problem 2](https://courses.calhoun.io/
 ## How to run
 Run the server using 
 ```
-go run cmd/main.go
+go run cmd/main.go --file <input> --format [json, yaml]
 ```
 
 and visit ```localhost:8080``` to see the homepage!
